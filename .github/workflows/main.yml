@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flappy Box</title>
+<style>
+body {
+margin: 0;
+overflow: hidden;
+background: #70c5ce;
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100vh;
+}
+canvas {
+background: linear-gradient(to bottom, #70c5ce, #ffffff);
+border: 2px solid #000;
+box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+</style>
+</head>
+<body>
+<audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2022/02/23/audio_96f0b4a96a.mp3?filename=calm-background-109973.mp3" loop autoplay></audio>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const bgMusic = document.getElementById("bgMusic");
+
+// Dynamic sizing
+function resizeCanvas() {
+canvas.width = window.innerWidth < 500 ? window.innerWidth - 20 : 400;
+canvas.height = window.innerHeight < 700 ? window.innerHeight - 20 : 600;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+let bird = {
+x: 50,
+y: 150,
+width: 30,
+height: 30,
+gravity: 0.6,
+lift: -10,
+velocity: 0,
+rotation: 0
+};
+
+let pipes = [];
+let frame = 0;
+let score = 0;
+let highScore = localStorage.getItem('flappyHighScore') || 0;
+let gameOver = false;
+
+document.addEventListener("keydown", () => {
+if (!gameOver) bird.velocity = bird.lift;
+else restartGame();
+});
+
+document.addEventListener("touchstart", () => {
+if (!gameOver) bird.velocity = bird.lift;
+else restartGame();
+});
+
+function drawBird() {
+ctx.save();
+ctx.translate(bird.x + bird.width/2, bird.y + bird.height/2);
+ctx.rotate(bird.velocity * 0.05);
+ctx.fillStyle = "#ff0";
+ctx.fillRect(-bird.width/2, -bird.height/2, bird.width, bird.height);
+ctx.restore();
+}
+
+function drawPipe(pipe) {
+ctx.fillStyle = "#4CAF50";
+ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+ctx.fillRect(pipe.x, pipe.bottom, pipe.width, canvas.height - pipe.bottom);
+}
+
+function createPipe() {
+let top = Math.random() * (canvas.height / 2);
+let gap = 130;
+let bottom = top + gap;
+pipes.push({
+x: canvas.width,
+width: 40,
+top: top,
+bottom: bottom
+});
+}
+
+function updatePipes() {
+for (let i = pipes.length - 1; i >= 0; i--) {
+let p = pipes[i];
+p.x -= 2;
+
+if (
+bird.x < p.x + p.width &&
+bird.x + bird.width > p.x &&
+(bird.y < p.top || bird.y + bird.height > p.bottom)
+) {
+gameOver = true;
+bgMusic.pause();
+if (score > highScore) {
+highScore = score;
+localStorage.setItem('flappyHighScore', highScore);
+}
+}
+
+if (p.x + p.width < 0) {
+pipes.splice(i, 1);
+score++;
+}
+}
+
+if (frame % 100 === 0) createPipe();
+}
+
+function drawScore() {
+ctx.fillStyle = "#000";
+ctx.font = "20px Arial";
+ctx.fillText("Score: " + score, 10, 30);
+ctx.fillText("Best: " + highScore, 10, 60);
+}
+
+function drawGameOver() {
+ctx.fillStyle = "#000";
+ctx.font = "36px Arial";
+ctx.fillText("Game Over", canvas.width/2 - 100, canvas.height/2 - 20);
+ctx.font = "20px Arial";
+ctx.fillText("Tap or Press any key to Restart", canvas.width/2 - 140, canvas.height/2 + 20);
+}
+
+function restartGame() {
+bird.y = 150;
+bird.velocity = 0;
+pipes = [];
+score = 0;
+gameOver = false;
+frame = 0;
+bgMusic.currentTime = 0;
+bgMusic.play();
+}
+
+function draw() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+drawBird();
+pipes.forEach(drawPipe);
+drawScore();
+
+if (gameOver) {
+drawGameOver();
+return;
+}
+
+bird.velocity += bird.gravity;
+bird.y += bird.velocity;
+
+if (bird.velocity < 0) bird.rotation = -15;
+else bird.rotation = 15;
+
+if (bird.y + bird.height > canvas.height || bird.y < 0) {
+gameOver = true;
+bgMusic.pause();
+if (score > highScore) {
+highScore = score;
+localStorage.setItem('flappyHighScore', highScore);
+}
+}
+
+updatePipes();
+
+frame++;
+requestAnimationFrame(draw);
+}
+
+createPipe();
+draw();
+</script>
+</body>
+</html>
